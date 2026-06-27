@@ -557,46 +557,68 @@ export const MarketReviewReportView: React.FC<MarketReviewReportViewProps> = ({
                     </table>
                   </div>
                 ) : null}
-                {[{
-                  key: 'sectors',
-                  title: marketReviewText.industryBoards,
-                  rankings: marketData.sectors,
-                }, {
-                  key: 'concepts',
-                  title: marketReviewText.conceptBoards,
-                  rankings: marketData.concepts,
-                }]
-                  .filter(({ rankings }) => hasRankingRows(rankings))
-                  .map(({ key, title, rankings }) => (
-                    <div key={key} className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {(['top', 'bottom'] as const).map((side) => {
-                        const rows = rankings?.[side] || [];
-                        if (rows.length === 0) {
-                          return null;
-                        }
-                        return (
-                          <div key={`${key}-${side}`} className="rounded-lg border border-subtle p-3">
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                              <p className="label-uppercase">{title}</p>
-                              <span className="text-xs text-secondary-text">
-                                {side === 'top' ? marketReviewText.leading : marketReviewText.lagging}
+                {(() => {
+                  const boardTypes = [{
+                    key: 'sectors' as const,
+                    title: marketReviewText.industryBoards,
+                    rankings: marketData.sectors,
+                  }, {
+                    key: 'concepts' as const,
+                    title: marketReviewText.conceptBoards,
+                    rankings: marketData.concepts,
+                  }].filter(({ rankings }) => hasRankingRows(rankings));
+                  if (boardTypes.length === 0) {
+                    return null;
+                  }
+                  const renderPanels = (
+                    key: string,
+                    title: string,
+                    rankings: MarketReviewPayload['sectors'],
+                  ) => (['top', 'bottom'] as const).map((side) => {
+                    const rows = rankings?.[side] || [];
+                    if (rows.length === 0) {
+                      return null;
+                    }
+                    return (
+                      <div key={`${key}-${side}`} className="rounded-lg border border-subtle p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="label-uppercase">{title}</p>
+                          <span className="text-xs text-secondary-text">
+                            {side === 'top' ? marketReviewText.leading : marketReviewText.lagging}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {rows.slice(0, 5).map((item, index) => (
+                            <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="min-w-0 truncate text-foreground">{item.name}</span>
+                              <span className="shrink-0 font-mono text-secondary-text">
+                                {formatRankingChange(item.changePct)}
                               </span>
                             </div>
-                            <div className="space-y-1.5">
-                              {rows.slice(0, 5).map((item, index) => (
-                                <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3 text-sm">
-                                  <span className="min-w-0 truncate text-foreground">{item.name}</span>
-                                  <span className="shrink-0 font-mono text-secondary-text">
-                                    {formatRankingChange(item.changePct)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  });
+                  // 两类板块都存在时按 行业|概念 左右并列，节省纵向空间；只有一类时保留 领涨|领跌 横向布局。
+                  if (boardTypes.length >= 2) {
+                    return (
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        {boardTypes.map(({ key, title, rankings }) => (
+                          <div key={key} className="space-y-3">
+                            {renderPanels(key, title, rankings)}
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
+                    );
+                  }
+                  const { key, title, rankings } = boardTypes[0];
+                  return (
+                    <div key={key} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {renderPanels(key, title, rankings)}
                     </div>
-                  ))}
+                  );
+                })()}
               </div>
             ))}
           </div>
