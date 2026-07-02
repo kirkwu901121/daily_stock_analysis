@@ -43,7 +43,7 @@ English | [简体中文](../README.md) | [繁體中文](README_CHT.md)
 | Capability | Coverage |
 |------------|----------|
 | AI decision reports | Core conclusion, score, trend, entry/exit levels, risk alerts, catalysts, and action checklist |
-| Multi-market data | A-shares, Hong Kong, US, ETFs: quotes, K-lines, technical indicators, capital flow, chips, news, announcements, and fundamentals; Japanese/Korean/Taiwan (Yahoo `.T` / `.KS` / `.KQ` / `.TW` / `.TWO`): YFinance daily data, basic quotes, and technical indicators are supported, while Taiwan additionally surfaces institutional-flow report blocks, TWD labels, and closing-auction phase detection; A-share-only advanced blocks such as `capital_flow`, `dragon_tiger`, and `boards` degrade to `not_supported` by market boundary (see [market boundaries](market-support.md)) |
+| Multi-market data | Covers A-shares, Hong Kong, US, Japanese, Korean, Taiwan stocks, and ETFs, with quotes, K-lines, technical indicators, news, announcements, fundamentals, and report context. Data-source coverage and market boundaries are documented in [market boundaries](market-support.md) |
 | Web / desktop workspace | Manual analysis, task progress, history, full Markdown reports, backtest, portfolio, settings, and light/dark themes |
 | Agent strategy chat | Multi-turn Q&A with 15 built-in strategies across Web/Bot/API |
 | Smart import & autocomplete | Image, CSV/Excel, clipboard import; code/name/pinyin/alias autocomplete |
