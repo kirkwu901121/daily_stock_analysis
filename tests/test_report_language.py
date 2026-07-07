@@ -33,6 +33,16 @@ class ReportLanguageTestCase(unittest.TestCase):
         self.assertEqual(emoji, "🟢")
         self.assertEqual(signal_tag, "buy")
 
+    def test_get_signal_level_upgrades_legacy_buy_signal_for_high_score(self) -> None:
+        self.assertEqual(
+            get_signal_level("买入", 85, "zh"),
+            ("强烈买入", "💚", "strong_buy"),
+        )
+        self.assertEqual(
+            get_signal_level("Buy", 88, "en"),
+            ("Strong Buy", "💚", "strong_buy"),
+        )
+
     def test_get_signal_level_score_fallback_uses_canonical_scale(self) -> None:
         self.assertEqual(get_signal_level("", 28, "zh"), ("减仓", "🟠", "reduce"))
         self.assertEqual(get_signal_level("", 38, "zh"), ("减仓", "🟠", "reduce"))

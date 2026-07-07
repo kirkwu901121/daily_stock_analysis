@@ -854,10 +854,10 @@ class NotificationService(
         if self._report_summary_only:
             report_lines.extend([f"## 📊 {labels['summary_heading']}", ""])
             for r in sorted_results:
-                _, emoji, _ = self._get_signal_level(r)
+                signal_text, emoji, _ = self._get_signal_level(r)
                 report_lines.append(
                     f"{emoji} **{self._get_display_name(r, report_language)}({r.code})**: "
-                    f"{self._get_display_operation_advice(r, report_language)} | "
+                    f"{signal_text} | "
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
@@ -865,13 +865,13 @@ class NotificationService(
             report_lines.extend([f"## 📈 {labels['report_title']}", ""])
             # 逐个股票的详细分析
             for result in sorted_results:
-                _, emoji, _ = self._get_signal_level(result)
+                signal_text, emoji, _ = self._get_signal_level(result)
                 confidence_stars = result.get_confidence_stars() if hasattr(result, 'get_confidence_stars') else '⭐⭐'
 
                 report_lines.extend([
                     f"### {emoji} {self._get_display_name(result, report_language)} ({result.code})",
                     "",
-                    f"**{labels['action_advice_label']}：{self._get_display_operation_advice(result, report_language)}** | "
+                    f"**{labels['action_advice_label']}：{signal_text}** | "
                     f"**{labels['score_label']}：{result.sentiment_score}** | "
                     f"**{labels['trend_label']}：{localize_trend_prediction(result.trend_prediction, report_language)}** | "
                     f"**Confidence：{confidence_stars}**",
@@ -1202,11 +1202,11 @@ class NotificationService(
                 "",
             ])
             for r in sorted_results:
-                _, signal_emoji, _ = self._get_signal_level(r)
+                signal_text, signal_emoji, _ = self._get_signal_level(r)
                 display_name = self._get_display_name(r, report_language)
                 report_lines.append(
                     f"{signal_emoji} **{display_name}({r.code})**: "
-                    f"{self._get_display_operation_advice(r, report_language)} | "
+                    f"{signal_text} | "
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
@@ -1534,11 +1534,11 @@ class NotificationService(
             lines.append(f"**📊 {labels['summary_heading']}**")
             lines.append("")
             for r in sorted_results:
-                _, signal_emoji, _ = self._get_signal_level(r)
+                signal_text, signal_emoji, _ = self._get_signal_level(r)
                 stock_name = self._get_display_name(r, report_language)
                 lines.append(
                     f"{signal_emoji} **{stock_name}({r.code})**: "
-                    f"{self._get_display_operation_advice(r, report_language)} | "
+                    f"{signal_text} | "
                     f"{labels['score_label']} {r.sentiment_score} | "
                     f"{localize_trend_prediction(r.trend_prediction, report_language)}"
                 )
@@ -1768,14 +1768,14 @@ class NotificationService(
         ]
         self._append_market_status_line(lines, results, report_language)
         for r in sorted_results:
-            _, emoji, _ = self._get_signal_level(r)
+            signal_text, emoji, _ = self._get_signal_level(r)
             name = self._get_display_name(r, report_language)
             dash = r.dashboard or {}
             core = dash.get('core_conclusion', {}) or {}
             one = (core.get('one_sentence') or r.analysis_summary or '')[:60]
             lines.append(
                 f"**{name}({r.code})** {emoji} "
-                f"{self._get_display_operation_advice(r, report_language)} | "
+                f"{signal_text} | "
                 f"{labels['score_label']} {r.sentiment_score} | {one}"
             )
         lines.append("")

@@ -109,6 +109,15 @@ def _mapping_or_empty(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
 
 
+def _is_falsey(value: Any) -> bool:
+    if value is False:
+        return True
+    text = _text_or_none(value)
+    if text is None:
+        return False
+    return text.lower() in {"0", "false", "f", "off", "no", "否"}
+
+
 def extract_decision_guardrail_reason(payload: Any) -> Optional[str]:
     """Return the first explicit score/action guardrail reason in a report payload."""
 
@@ -117,6 +126,11 @@ def extract_decision_guardrail_reason(payload: Any) -> Optional[str]:
     calibration = _mapping_or_empty(dashboard.get("decision_score_calibration"))
     stability = _mapping_or_empty(dashboard.get("decision_stability"))
     metadata = _mapping_or_empty(data.get("metadata"))
+    stability_reason = stability.get("reason")
+    stability_downgrade_reason = stability.get("downgrade_reason")
+    if _is_falsey(stability.get("applied")):
+        stability_reason = None
+        stability_downgrade_reason = None
 
     for candidate in (
         data.get("guardrail_reason"),
@@ -127,8 +141,8 @@ def extract_decision_guardrail_reason(payload: Any) -> Optional[str]:
         calibration.get("guardrail_reason"),
         calibration.get("downgrade_reason"),
         stability.get("guardrail_reason"),
-        stability.get("downgrade_reason"),
-        stability.get("reason"),
+        stability_downgrade_reason,
+        stability_reason,
     ):
         text = _text_or_none(candidate)
         if text:

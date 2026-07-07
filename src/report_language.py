@@ -963,9 +963,17 @@ def get_signal_level(advice: Any, score: Any, language: Optional[str]) -> tuple[
     """Return localized signal text, emoji, and stable color tag."""
     normalized_language = normalize_report_language(language)
     canonical = _canonicalize_lookup_value(advice, _OPERATION_ADVICE_CANONICAL_MAP)
+    try:
+        numeric_score = int(float(score))
+    except (TypeError, ValueError):
+        numeric_score = 50
+    score_signal = signal_key_for_score(numeric_score)
+
     if canonical == "strong_buy":
         return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "💚", "strong_buy")
     if canonical == "buy":
+        if score_signal == "strong_buy":
+            return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "💚", "strong_buy")
         return (_OPERATION_ADVICE_TRANSLATIONS["buy"][normalized_language], "🟢", "buy")
     if canonical == "hold":
         return (_OPERATION_ADVICE_TRANSLATIONS["hold"][normalized_language], "🟡", "hold")
@@ -978,12 +986,6 @@ def get_signal_level(advice: Any, score: Any, language: Optional[str]) -> tuple[
     if canonical in {"avoid", "alert"}:
         return (_OPERATION_ADVICE_TRANSLATIONS[canonical][normalized_language], "🟡", "hold")
 
-    try:
-        numeric_score = int(float(score))
-    except (TypeError, ValueError):
-        numeric_score = 50
-
-    score_signal = signal_key_for_score(numeric_score)
     if score_signal == "strong_buy":
         return (_OPERATION_ADVICE_TRANSLATIONS["strong_buy"][normalized_language], "💚", "strong_buy")
     if score_signal == "buy":

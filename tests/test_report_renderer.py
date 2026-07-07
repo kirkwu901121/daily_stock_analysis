@@ -117,6 +117,39 @@ class TestReportRenderer(unittest.TestCase):
         self.assertIn("作战计划", out)
         self.assertNotIn("盘中决策护栏", out)
 
+    def test_render_markdown_summary_ignores_unapplied_stability_reason(self) -> None:
+        r = _make_result(
+            dashboard={
+                "decision_stability": {
+                    "applied": False,
+                    "reason": "未使用资金流校准",
+                },
+            }
+        )
+
+        out = render("markdown", [r], summary_only=True)
+
+        self.assertIsNotNone(out)
+        self.assertIn("🟢买入:1 🟡观望:0 🔴卖出:0", out)
+        self.assertIn("买入 | 评分 72", out)
+        self.assertNotIn("持有 | 评分 72", out)
+
+    def test_render_markdown_full_shows_strong_buy_signal_for_80_plus_legacy_advice(self) -> None:
+        r = _make_result(
+            operation_advice="持有",
+            sentiment_score=85,
+            analysis_summary="高分但旧建议仍为持有",
+            dashboard={
+                "core_conclusion": {"one_sentence": "高分但旧建议仍为持有"},
+            },
+        )
+
+        out = render("markdown", [r], summary_only=False)
+
+        self.assertIsNotNone(out)
+        self.assertIn("**💚 强烈买入** | 看多", out)
+        self.assertNotIn("**🟢 买入** | 看多", out)
+
     def test_render_markdown_keeps_decision_signal_out_of_summary(self) -> None:
         """Markdown summary stays compact while full details keep DecisionSignal excerpts."""
         r = _with_decision_signal_summary(_make_result())

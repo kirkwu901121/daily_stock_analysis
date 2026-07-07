@@ -744,6 +744,28 @@ class TestNotificationServiceReportGeneration(unittest.TestCase):
         self.assertNotIn("🟡 持有 | 评分 70", out)
 
     @mock.patch("src.notification.get_config")
+    def test_generate_brief_report_aligns_legacy_advice_to_strong_buy_for_80_plus(
+        self,
+        mock_get_config: mock.MagicMock,
+    ):
+        mock_get_config.return_value = _make_config(report_renderer_enabled=False)
+        service = NotificationService()
+        result = AnalysisResult(
+            code="301308.SZ",
+            name="江波龙",
+            sentiment_score=85,
+            trend_prediction="看多",
+            operation_advice="持有",
+            analysis_summary="高分且旧建议仍为持有",
+        )
+
+        out = service.generate_brief_report([result], report_date="2026-07-06")
+
+        self.assertIn("> 1 只 | 🟢1 🟡0 🔴0", out)
+        self.assertIn("江波龙(301308.SZ)** 💚 强烈买入 | 评分 85", out)
+        self.assertNotIn("江波龙(301308.SZ)** 💚 买入 | 评分 85", out)
+
+    @mock.patch("src.notification.get_config")
     def test_generate_brief_report_keeps_guardrailed_hold(self, mock_get_config: mock.MagicMock):
         mock_get_config.return_value = _make_config(report_renderer_enabled=False)
         service = NotificationService()

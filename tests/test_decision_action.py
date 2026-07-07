@@ -437,8 +437,38 @@ def test_extract_decision_guardrail_reason_reads_dashboard_sources() -> None:
         {
             "dashboard": {
                 "decision_stability": {
+                    "applied": True,
                     "reason": "capital flow is unavailable",
                 }
             }
         }
     ) == "capital flow is unavailable"
+
+
+def test_extract_decision_guardrail_reason_ignores_unapplied_stability_reason() -> None:
+    assert (
+        extract_decision_guardrail_reason(
+            {
+                "dashboard": {
+                    "decision_stability": {
+                        "applied": False,
+                        "reason": "资金流不可用，未使用资金流校准",
+                    }
+                }
+            }
+        )
+        is None
+    )
+    assert (
+        extract_decision_guardrail_reason(
+            {
+                "dashboard": {
+                    "decision_stability": {
+                        "applied": False,
+                        "downgrade_reason": "资金流仍偏弱，暂按观望处理",
+                    }
+                }
+            }
+        )
+        is None
+    )
