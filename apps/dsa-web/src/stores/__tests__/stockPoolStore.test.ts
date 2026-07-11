@@ -1191,6 +1191,50 @@ describe('stockPoolStore', () => {
     }));
   });
 
+  it('clears stock-bar loading when a refresh supersedes the initial load', async () => {
+    const initialStockBarRequest = createDeferred<{
+      total: number;
+      page: number;
+      limit: number;
+      items: typeof historyItem[];
+    }>();
+    const refreshStockBarRequest = createDeferred<{
+      total: number;
+      page: number;
+      limit: number;
+      items: typeof historyItem[];
+    }>();
+
+    vi.mocked(historyApi.getStockBarList)
+      .mockReturnValueOnce(initialStockBarRequest.promise)
+      .mockReturnValueOnce(refreshStockBarRequest.promise);
+
+    const initialPromise = useStockPoolStore.getState().loadStockBar();
+    expect(useStockPoolStore.getState().isLoadingStockBar).toBe(true);
+
+    const refreshPromise = useStockPoolStore.getState().refreshStockBar();
+    refreshStockBarRequest.resolve({
+      total: 1,
+      page: 1,
+      limit: 20,
+      items: [historyItem],
+    });
+    await refreshPromise;
+
+    expect(useStockPoolStore.getState().isLoadingStockBar).toBe(false);
+
+    initialStockBarRequest.resolve({
+      total: 0,
+      page: 1,
+      limit: 20,
+      items: [],
+    });
+    await initialPromise;
+
+    expect(useStockPoolStore.getState().stockBarItems).toEqual([historyItem]);
+    expect(useStockPoolStore.getState().isLoadingStockBar).toBe(false);
+  });
+
   it('keeps stock-bar failure state when a stale older request succeeds after a newer failure', async () => {
     const staleStockBarRequest = createDeferred<{
       total: number;
