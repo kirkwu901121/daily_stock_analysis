@@ -119,6 +119,8 @@ class TestReportRenderer(unittest.TestCase):
         out = render("markdown", [avoid, alert], summary_only=True)
 
         self.assertIsNotNone(out)
+        self.assertIn("🟡 **Avoid Corp(AVOID)**: Avoid | Score 90", out)
+        self.assertIn("🔴 **Alert Corp(ALERT)**: Alert | Score 85", out)
         self.assertIn("**Avoid Corp(AVOID)**: Avoid | Score 90", out)
         self.assertIn("**Alert Corp(ALERT)**: Alert | Score 85", out)
         self.assertNotIn("**Avoid Corp(AVOID)**: Buy", out)

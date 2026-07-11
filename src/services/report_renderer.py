@@ -29,6 +29,7 @@ from src.report_language import (
     normalize_report_language,
 )
 from src.schemas.decision_action import (
+    display_action_fields_for_result,
     display_decision_type_for_result,
     display_operation_advice_for_result,
     localize_action_label,
@@ -131,11 +132,25 @@ def render(
     sorted_results = sorted(results, key=lambda x: x.sentiment_score, reverse=True)
     sorted_enriched = []
     for r in sorted_results:
+        display_action = display_action_fields_for_result(
+            r,
+            report_language=report_language,
+        )["action"]
         display_advice = display_operation_advice_for_result(
             r,
             report_language=report_language,
         )
-        _, se, _ = get_signal_level(display_advice, r.sentiment_score, report_language)
+        signal_action = {
+            "buy": "buy",
+            "add": "buy",
+            "hold": "hold",
+            "reduce": "reduce",
+            "sell": "sell",
+            "watch": "watch",
+            "avoid": "hold",
+            "alert": "sell",
+        }.get(display_action, display_action)
+        _, se, _ = get_signal_level(signal_action or display_advice, r.sentiment_score, report_language)
         rn = get_localized_stock_name(r.name, r.code, report_language)
         sorted_enriched.append({
             "result": r,
