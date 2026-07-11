@@ -135,11 +135,11 @@ def render(
             r,
             report_language=report_language,
         )
-        st, se, _ = get_signal_level(display_advice, r.sentiment_score, report_language)
+        _, se, _ = get_signal_level(display_advice, r.sentiment_score, report_language)
         rn = get_localized_stock_name(r.name, r.code, report_language)
         sorted_enriched.append({
             "result": r,
-            "signal_text": st,
+            "signal_text": display_advice,
             "signal_emoji": se,
             "stock_name": _escape_md(rn),
             "localized_operation_advice": display_advice,

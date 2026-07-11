@@ -296,6 +296,23 @@ def test_localize_action_label_uses_report_language() -> None:
     assert localize_action_label("avoid", "en") == "Avoid"
 
 
+@pytest.mark.parametrize(
+    ("action", "expected_label"),
+    [
+        ("buy", "매수"),
+        ("add", "추가 매수"),
+        ("hold", "보유"),
+        ("reduce", "비중축소"),
+        ("sell", "매도"),
+        ("watch", "관망"),
+        ("avoid", "회피"),
+        ("alert", "경고"),
+    ],
+)
+def test_localize_action_label_supports_korean(action: str, expected_label: str) -> None:
+    assert localize_action_label(action, "ko") == expected_label
+
+
 def test_build_action_fields_respects_market_review_exclusion() -> None:
     fields = build_action_fields(
         operation_advice="买入",
