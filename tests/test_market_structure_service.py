@@ -576,6 +576,45 @@ def test_market_structure_service_reuses_fundamental_rankings_for_theme_layer() 
     assert context["market_theme_context"]["leading_concepts"][0]["rank"] == 1
 
 
+def test_market_structure_service_marks_partial_if_fundamental_rankings_partial_with_missing_bottom() -> None:
+    service = MarketStructureService(fetcher_manager=_FakeFetcherManager())
+    fundamental_context = {
+        "market": "cn",
+        "belong_boards": [{"name": "机器人概念", "type": "概念"}],
+        "concept_boards": {
+            "status": "partial",
+            "data": {
+                "top": [{"name": "机器人概念", "rank": 1, "change_pct": 4.2}],
+                "bottom": [],
+            },
+        },
+        "boards": {
+            "status": "partial",
+            "data": {
+                "top": [{"name": "通用设备", "rank": 2, "change_pct": 2.1}],
+                "bottom": [],
+            },
+        },
+    }
+
+    context = service.build_context(
+        code="300024",
+        stock_name="机器人",
+        market="cn",
+        fundamental_context=fundamental_context,
+        trade_date="2026-07-04",
+    )
+
+    market_theme = context["market_theme_context"]
+    position = context["stock_market_position"]
+    assert market_theme["status"] == "partial"
+    assert market_theme["data_quality"]["status"] == "partial"
+    assert {source["status"] for source in market_theme["data_quality"]["sources"]} == {
+        "partial"
+    }
+    assert any(tag["code"] == "theme_data_partial" for tag in position["risk_tags"])
+
+
 def test_market_structure_service_skips_hotspots_for_unsupported_board_context() -> None:
     unsupported_payloads = [
         {

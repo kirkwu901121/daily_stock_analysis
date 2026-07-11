@@ -133,28 +133,40 @@ def _normalize_sector_ranking_items(value: Any) -> List[Dict[str, Any]]:
     return normalized
 
 
-def _normalize_sector_rankings(value: Any) -> Optional[Dict[str, List[Dict[str, Any]]]]:
+def _normalize_sector_rankings(value: Any) -> Optional[Dict[str, Any]]:
     if not isinstance(value, dict):
         return None
 
-    return {
+    status = value.get("status")
+    status_text = status.strip().lower() if isinstance(status, str) else None
+    normalized: Dict[str, Any] = {
         "top": _normalize_sector_ranking_items(value.get("top")),
         "bottom": _normalize_sector_ranking_items(value.get("bottom")),
     }
+    if status_text:
+        normalized["status"] = status_text
+    return normalized
 
 
-def _extract_ranking_payload_from_block(value: Any) -> Any:
+def _extract_ranking_payload_from_block(value: Any) -> Optional[Dict[str, Any]]:
     if not isinstance(value, dict):
         return None
     if "top" in value or "bottom" in value:
         return value
 
     status = value.get("status")
-    if status not in {"ok", "partial", None}:
+    if not isinstance(status, str):
+        status_is_valid = status is None
+    else:
+        status_is_valid = status.strip().lower() in {"ok", "partial"}
+    if not status_is_valid:
         return None
     data = value.get("data")
     if isinstance(data, dict):
-        return data
+        payload = dict(data)
+        if isinstance(status, str):
+            payload["status"] = status.strip().lower()
+        return payload
     return None
 
 

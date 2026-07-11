@@ -152,14 +152,17 @@ class MarketHotspotService:
             missing_fields.append("concept_rankings")
 
         has_any_ranking = bool(leading_industries or leading_concepts or lagging_themes)
-        is_data_complete = not missing_fields and not errors
-        if is_data_complete:
+        has_partial_source = any(
+            source.status == "partial"
+            for source in sources
+            if source.provider == "dsa" and source.dataset in {"sector_rankings", "concept_rankings"}
+        )
+        if not missing_fields and not errors and not has_partial_source:
             status = "ok"
+        elif has_any_ranking:
+            status = "partial"
         else:
-            if has_any_ranking:
-                status = "partial"
-            else:
-                status = "unknown"
+            status = "unknown"
 
         context = MarketThemeContext(
             status=status,
@@ -229,11 +232,18 @@ class MarketHotspotService:
         bottom = rankings.get("bottom")
         top_items = list(top) if isinstance(top, list) else []
         bottom_items = list(bottom) if isinstance(bottom, list) else []
+        if isinstance(rankings.get("status"), str):
+            raw_status = rankings.get("status").strip().lower()
+            status = raw_status if raw_status in {"ok", "partial", "not_supported", "unknown"} else "ok"
+        else:
+            status = "ok"
+        if not top_items and not bottom_items:
+            status = "empty"
         sources.append(
             MarketStructureSource(
                 provider="dsa",
                 dataset=dataset,
-                status="ok" if top_items or bottom_items else "empty",
+                status=status,
                 message="reused fundamental_context ranking payload",
             )
         )
