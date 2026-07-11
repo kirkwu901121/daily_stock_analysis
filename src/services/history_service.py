@@ -35,7 +35,11 @@ from src.market_phase_summary import (
     extract_market_phase_summary,
     rebuild_market_phase_summary_for_stock_code,
 )
-from src.schemas.decision_action import display_action_fields, display_operation_advice_for_result
+from src.schemas.decision_action import (
+    display_action_fields,
+    display_action_fields_for_result,
+    display_operation_advice_for_result,
+)
 from src.schemas.decision_scale import extract_decision_guardrail_reason
 from src.utils.sniper_points import find_sniper_points
 from src.utils.data_processing import (
@@ -1219,12 +1223,31 @@ class HistoryService:
         )
 
     def _get_signal_level(self, result: AnalysisResult) -> Tuple[str, str, str]:
-        """Get signal level based on sentiment score and decision type."""
+        """Get display text and signal metadata from the resolved action."""
         report_language = getattr(result, "report_language", "zh")
-        return get_signal_level(
-            self._get_display_operation_advice(result, report_language),
+        display_fields = display_action_fields_for_result(
+            result,
+            report_language=report_language,
+        )
+        signal_advice = {
+            "buy": "buy",
+            "add": "buy",
+            "hold": "hold",
+            "reduce": "reduce",
+            "sell": "sell",
+            "watch": "watch",
+            "avoid": "hold",
+            "alert": "sell",
+        }.get(display_fields["action"])
+        _, emoji, signal_tag = get_signal_level(
+            signal_advice or self._get_display_operation_advice(result, report_language),
             result.sentiment_score,
             report_language,
+        )
+        return (
+            self._get_display_operation_advice(result, report_language),
+            emoji,
+            signal_tag,
         )
 
     @staticmethod
