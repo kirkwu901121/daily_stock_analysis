@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 from api.v1.schemas.history import ReportDetails
 from data_provider.base import DataFetcherManager
 from src.core.pipeline import StockAnalysisPipeline
+from src.services.market_hotspot_service import MarketHotspotService
 from src.utils.data_processing import (
     extract_board_detail_fields,
     extract_market_structure_detail_field,
@@ -30,6 +31,20 @@ class _SlowConceptRankingFetcher:
         return (
             [{"name": f"top-{n}", "change_pct": 1.2}],
             [{"name": f"bottom-{n}", "change_pct": -0.8}],
+        )
+
+
+class _HangingConceptRankingFetcher:
+    def __init__(self, delay_seconds: float = 0.5) -> None:
+        self.calls = 0
+        self.delay_seconds = delay_seconds
+
+    def get_concept_rankings(self, n: int = 5):
+        self.calls += 1
+        time.sleep(self.delay_seconds)
+        return (
+            [{"name": f"top-{n}", "change_pct": 1.0}],
+            [{"name": f"bottom-{n}", "change_pct": -1.0}],
         )
 
 
@@ -101,6 +116,30 @@ class PipelineRelatedBoardsTestCase(unittest.TestCase):
         pipeline.fetcher_manager.get_concept_rankings.assert_called_once_with(5)
         self.assertEqual(first["concept_boards"]["data"]["top"][0]["name"], "Robot Theme")
         self.assertEqual(second["concept_boards"]["data"]["top"][0]["name"], "Robot Theme")
+
+    def test_get_concept_rankings_for_market_no_long_block_with_hanging_fetcher(self) -> None:
+        fetcher = _HangingConceptRankingFetcher()
+        pipeline = StockAnalysisPipeline.__new__(StockAnalysisPipeline)
+        pipeline.fetcher_manager = fetcher
+        pipeline.market_hotspot_service = MarketHotspotService(
+            fetcher_manager=fetcher,
+            ranking_fetch_timeout_seconds=0.05,
+        )
+        pipeline._concept_rankings_cache = {}
+        pipeline._concept_rankings_cache_lock = threading.Lock()
+
+        start = time.perf_counter()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(pipeline._get_concept_rankings_for_market, "cn")
+            second = executor.submit(pipeline._get_concept_rankings_for_market, "cn")
+            first_result = first.result()
+            second_result = second.result()
+
+        duration = time.perf_counter() - start
+        self.assertLess(duration, 0.30)
+        self.assertEqual(first_result, ([], []))
+        self.assertEqual(second_result, ([], []))
+        self.assertGreaterEqual(fetcher.calls, 1)
 
     def test_concept_rankings_cache_is_shared_across_manager_instances(self) -> None:
         fetcher = _SlowConceptRankingFetcher()

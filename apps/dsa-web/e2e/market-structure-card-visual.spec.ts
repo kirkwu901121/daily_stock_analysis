@@ -248,6 +248,12 @@ async function renderMarketStructureCard(distIndexPath: string, testInfo: TestIn
     expect(screenshot).toBeTruthy();
     expect(screenshot.length).toBeGreaterThan(1024);
     const screenshotRelPath = path.relative(process.cwd(), screenshotPath);
+    const githubServer = process.env.GITHUB_SERVER_URL || 'https://github.com';
+    const githubRepository = process.env.GITHUB_REPOSITORY;
+    const githubRunId = process.env.GITHUB_RUN_ID;
+    const artifactRunHint = githubRepository && githubRunId
+      ? `${githubServer}/${githubRepository}/actions/runs/${githubRunId}`
+      : 'Unavailable (not running in GitHub Actions)';
     const reproductionCommand = 'cd apps/dsa-web && npx playwright test e2e/market-structure-card-visual.spec.ts';
     const artifactManifestPath = testInfo.outputPath('market-structure-card-visual-artifact.txt');
     writeFile(
@@ -256,6 +262,8 @@ async function renderMarketStructureCard(distIndexPath: string, testInfo: TestIn
         'MarketStructureCard visual evidence attached',
         `Screenshot attachment: market-structure-card-visual.png`,
         `Local fallback path: ${screenshotRelPath}`,
+        `GitHub Actions run: ${artifactRunHint}`,
+        'Use attachment export (screenshot/artifact) from Playwright run artifact in this workflow run.',
         `Repro command: ${reproductionCommand}`,
       ].join('\n'),
     );

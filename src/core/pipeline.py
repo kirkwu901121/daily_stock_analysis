@@ -59,6 +59,7 @@ from src.services.daily_market_context import (
 )
 from src.services.social_sentiment_service import SocialSentimentService
 from src.services.intelligence_service import IntelligenceService
+from src.services.market_hotspot_service import MarketHotspotService
 from src.services.analysis_context_builder import (
     AnalysisContextBuilder,
     PipelineAnalysisArtifacts,
@@ -224,6 +225,13 @@ class StockAnalysisPipeline:
         self.analyzer = GeminiAnalyzer(config=self.config, skills=self.analysis_skills)
         self.notifier = NotificationService(source_message=source_message)
         self.market_structure_service = MarketStructureService(fetcher_manager=self.fetcher_manager)
+        self.market_hotspot_service: Optional[MarketHotspotService] = None
+        try:
+            self.market_hotspot_service = MarketHotspotService(
+                fetcher_manager=self.fetcher_manager,
+            )
+        except Exception as exc:
+            logger.debug("market hotspot service init failed (fail-open): %s", exc)
         self._single_stock_notify_lock = threading.Lock()
         self._daily_market_context_service_lock = threading.Lock()
         self._concept_rankings_cache_lock = threading.Lock()
@@ -1154,6 +1162,19 @@ class StockAnalysisPipeline:
         if market != "cn":
             return [], []
 
+        service = getattr(self, "market_hotspot_service", None)
+        if service is None:
+            try:
+                service = MarketHotspotService(fetcher_manager=self.fetcher_manager)
+            except Exception as exc:
+                logger.debug(
+                    "market hotspot service init failed in concept ranking path (fail-open): %s",
+                    exc,
+                )
+                service = None
+            else:
+                self.market_hotspot_service = service
+
         cache = getattr(self, "_concept_rankings_cache", None)
         if not isinstance(cache, dict):
             cache = {}
@@ -1172,15 +1193,18 @@ class StockAnalysisPipeline:
             top_concepts: List[Dict[str, Any]] = []
             bottom_concepts: List[Dict[str, Any]] = []
             try:
-                fetch_rankings = getattr(self.fetcher_manager, "get_concept_rankings", None)
-                if callable(fetch_rankings):
-                    rankings = fetch_rankings(5)
-                    if isinstance(rankings, tuple) and len(rankings) == 2:
-                        raw_top, raw_bottom = rankings
-                        if isinstance(raw_top, list):
-                            top_concepts = list(raw_top)
-                        if isinstance(raw_bottom, list):
-                            bottom_concepts = list(raw_bottom)
+                if service is None:
+                    fetch_rankings = getattr(self.fetcher_manager, "get_concept_rankings", None)
+                    if callable(fetch_rankings):
+                        rankings = fetch_rankings(5)
+                        if isinstance(rankings, tuple) and len(rankings) == 2:
+                            raw_top, raw_bottom = rankings
+                            if isinstance(raw_top, list):
+                                top_concepts = list(raw_top)
+                            if isinstance(raw_bottom, list):
+                                bottom_concepts = list(raw_bottom)
+                else:
+                    top_concepts, bottom_concepts = service.get_concept_rankings(5)
             except Exception as e:
                 logger.debug("attach concept_rankings failed (fail-open): %s", e)
 

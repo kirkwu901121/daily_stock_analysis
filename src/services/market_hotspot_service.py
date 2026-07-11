@@ -260,6 +260,21 @@ class MarketHotspotService:
             "missing_fields": ["hotspot_route", "hotspot_constituents", "leader_stocks"],
         }
 
+    def get_concept_rankings(
+        self,
+        limit: int = 5,
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Get concept ranking top/bottom with timeout + concurrency protection."""
+        errors: List[str] = []
+        sources: List[MarketStructureSource] = []
+        return self._resolve_rankings(
+            "get_concept_rankings",
+            "concept_rankings",
+            limit,
+            errors,
+            sources,
+        )
+
     def _get_cached_hotspots(
         self,
         cache_key: Tuple[str, Optional[str], int],
