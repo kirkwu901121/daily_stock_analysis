@@ -84,12 +84,27 @@ class TelegramSender:
             # Telegram 消息最大长度 4096 字符
             max_length = 4096
 
-            if len(content) <= max_length:
+            telegram_content = self._convert_to_telegram_markdown(content)
+
+            if len(telegram_content) <= max_length:
                 # 单条消息发送
-                return self._send_telegram_message(api_url, chat_id, content, message_thread_id, timeout_seconds=timeout_seconds)
+                return self._send_telegram_message(
+                    api_url,
+                    chat_id,
+                    content,
+                    message_thread_id,
+                    timeout_seconds=timeout_seconds,
+                )
             else:
-                # 分段发送长消息
-                return self._send_telegram_chunked(api_url, chat_id, content, max_length, message_thread_id, timeout_seconds=timeout_seconds)
+                # 按 Markdown 转义后的最终 payload 分段，避免转义字符使请求超限
+                return self._send_telegram_chunked(
+                    api_url,
+                    chat_id,
+                    telegram_content,
+                    max_length,
+                    message_thread_id,
+                    timeout_seconds=timeout_seconds,
+                )
 
         except Exception as e:
             logger.error(f"发送 Telegram 消息失败: {e}")
@@ -105,10 +120,11 @@ class TelegramSender:
         message_thread_id: Optional[str] = None,
         *,
         timeout_seconds: Optional[float] = None,
+        markdown_converted: bool = False,
     ) -> bool:
         """Send a single Telegram message with exponential backoff retry (Fixes #287)"""
         # Convert Markdown to Telegram-compatible format
-        telegram_text = self._convert_to_telegram_markdown(text)
+        telegram_text = text if markdown_converted else self._convert_to_telegram_markdown(text)
 
         payload = {
             "chat_id": chat_id,
@@ -241,7 +257,7 @@ class TelegramSender:
         *,
         timeout_seconds: Optional[float] = None,
     ) -> bool:
-        """分段发送长 Telegram 消息"""
+        """按已转换的 Telegram Markdown payload 分段发送长消息。"""
         # 按段落分割
         sections = content.split("\n---\n")
         delimiter = "\n---\n"
@@ -262,7 +278,14 @@ class TelegramSender:
             chunk_index += 1
             current_chunk = []
             current_length = 0
-            if not self._send_telegram_message(api_url, chat_id, chunk_content, message_thread_id, timeout_seconds=timeout_seconds):
+            if not self._send_telegram_message(
+                api_url,
+                chat_id,
+                chunk_content,
+                message_thread_id,
+                timeout_seconds=timeout_seconds,
+                markdown_converted=True,
+            ):
                 all_success = False
             return all_success
 
@@ -282,7 +305,14 @@ class TelegramSender:
                 for long_chunk in _split_long_section(section, max_length):
                     logger.info(f"发送 Telegram 消息块 {chunk_index}...")
                     chunk_index += 1
-                    if not self._send_telegram_message(api_url, chat_id, long_chunk, message_thread_id, timeout_seconds=timeout_seconds):
+                    if not self._send_telegram_message(
+                        api_url,
+                        chat_id,
+                        long_chunk,
+                        message_thread_id,
+                        timeout_seconds=timeout_seconds,
+                        markdown_converted=True,
+                    ):
                         all_success = False
                 continue
 

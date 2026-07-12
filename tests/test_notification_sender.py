@@ -1658,7 +1658,11 @@ class TestTelegramSender(unittest.TestCase):
         content = f"**AI 决策信号**\n- 理由: {long_reason}\n"
 
         result = sender._send_telegram_chunked(
-            "http://api.telegram.org", "CHAT", content, max_length=4096, timeout_seconds=3
+            "http://api.telegram.org",
+            "CHAT",
+            sender._convert_to_telegram_markdown(content),
+            max_length=4096,
+            timeout_seconds=3,
         )
 
         self.assertTrue(result)
@@ -1681,6 +1685,21 @@ class TestTelegramSender(unittest.TestCase):
         for call in mock_send_telegram_message.call_args_list:
             sent_text = call.args[2]
             self.assertLessEqual(len(sent_text), 4096)
+
+    @mock.patch("src.notification_sender.telegram_sender.requests.post")
+    def test_send_chunks_by_final_markdown_payload_length(self, mock_post):
+        mock_post.return_value = _response(200, {"ok": True})
+        cfg = _config(telegram_bot_token="BOT", telegram_chat_id="CHAT")
+        sender = TelegramSender(cfg)
+        content = "(" * 4090
+
+        result = sender.send_to_telegram(content)
+
+        self.assertTrue(result)
+        self.assertGreaterEqual(mock_post.call_count, 2)
+        payload_texts = [call.kwargs["json"]["text"] for call in mock_post.call_args_list]
+        self.assertTrue(all(len(text) <= 4096 for text in payload_texts))
+        self.assertEqual("".join(payload_texts), sender._convert_to_telegram_markdown(content))
 
     @mock.patch("src.notification_sender.telegram_sender.requests.post")
     def test_send_plain_text_fallback_handles_non_json_200(self, mock_post):
