@@ -298,6 +298,35 @@ class TestAgentExecutor(unittest.TestCase):
         self.assertEqual(captured["stock_scope"].expected_stock_code, "AAOI")
         self.assertEqual(captured["stock_scope"].allowed_stock_codes, {"AAOI"})
 
+    def test_chat_keeps_first_turn_macro_topic_out_of_us_stock_scope(self):
+        registry = _make_registry_with_echo()
+        adapter = _make_mock_adapter()
+        adapter._config = MagicMock()
+        executor = AgentExecutor(registry, adapter, max_steps=2)
+        captured = {}
+
+        def fake_run_loop(messages, tool_decls, parse_dashboard, progress_callback=None, stock_scope=None):
+            captured["messages"] = messages
+            captured["stock_scope"] = stock_scope
+            return AgentResult(success=True, content="assistant reply")
+
+        with patch.object(executor, "_run_loop", side_effect=fake_run_loop):
+            with patch(
+                "src.agent.executor.build_agent_chat_context_bundle",
+                return_value=SimpleNamespace(context_messages=[], diagnostics={}),
+            ):
+                with patch("src.agent.conversation.conversation_manager.get_or_create"):
+                    with patch("src.agent.conversation.conversation_manager.add_message"):
+                        executor.chat("分析 CPI 对美股影响", "session-1")
+
+        system_prompt = captured["messages"][0]["content"]
+        user_context = "\n".join(
+            msg["content"] for msg in captured["messages"] if msg["role"] == "user"
+        )
+        self.assertNotIn("本次分析对象为 **美股**", system_prompt)
+        self.assertNotIn("股票代码: CPI", user_context)
+        self.assertIsNone(captured["stock_scope"])
+
     def test_chat_switches_effective_context_and_clears_previous_stock_fields(self):
         registry = _make_registry_with_echo()
         adapter = _make_mock_adapter()
@@ -422,6 +451,23 @@ class TestAgentExecutor(unittest.TestCase):
 
         self.assertEqual(result.effective_context, {})
         self.assertIsNone(result.stock_scope)
+
+    def test_resolve_stock_scope_keeps_first_turn_macro_topics_unscoped(self):
+        messages = (
+            "分析 CPI 对美股影响",
+            "分析 ppi 对美股影响",
+            "分析 PMI 对港股影响",
+            "分析 GDP 对大盘影响",
+            "分析 PCE 对美股影响",
+            "分析 NFP 对纳指影响",
+            "分析 FOMC 对纳指影响",
+        )
+        for message in messages:
+            with self.subTest(message=message):
+                result = resolve_stock_scope(message, None)
+
+                self.assertEqual(result.effective_context, {})
+                self.assertIsNone(result.stock_scope)
 
     def test_resolve_stock_scope_treats_multiple_first_turn_codes_as_compare(self):
         result = resolve_stock_scope("比较 AAPL 和 HK00700", None)

@@ -159,6 +159,11 @@ class TestExtractStockCode(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(_extract_stock_code(text), "")
 
+    def test_macro_topics_excluded(self):
+        for topic in ("CPI", "PPI", "PMI", "GDP", "PCE", "NFP", "FOMC"):
+            with self.subTest(topic=topic):
+                self.assertEqual(_extract_stock_code(f"分析 {topic} 对美股影响"), "")
+
     def test_finance_abbrev_before_real_ticker(self):
         self.assertEqual(_extract_stock_code("PE AAPL 怎么看"), "AAPL")
         self.assertEqual(_extract_stock_code("TTM AAPL 怎么看"), "AAPL")
@@ -191,7 +196,7 @@ class TestExtractStockCode(unittest.TestCase):
         expected_in_set = {
             "BUY", "SELL", "HOLD", "ETF", "IPO", "RSI", "MACD", "STOCK", "TREND",
             "TTM", "PE", "YOY", "QOQ", "EBITDA", "DCF", "CAGR", "KDJ",
-            "IS", "WHAT", "HIGH",
+            "IS", "WHAT", "HIGH", "CPI", "PPI", "PMI", "GDP", "PCE", "NFP", "FOMC",
         }
         self.assertTrue(expected_in_set.issubset(_COMMON_WORDS))
 
@@ -1668,6 +1673,28 @@ class TestOrchestratorExecution(unittest.TestCase):
         self.assertEqual(ctx.meta["stock_scope"].mode, "switch")
         self.assertEqual(ctx.meta["stock_scope"].expected_stock_code, "AAOI")
         self.assertEqual(ctx.meta["stock_scope"].allowed_stock_codes, {"AAOI"})
+
+    def test_chat_keeps_first_turn_macro_topics_out_of_stock_scope(self):
+        from src.agent.orchestrator import OrchestratorResult
+
+        for message in ("分析 CPI 对美股影响", "分析 FOMC 对纳指影响"):
+            with self.subTest(message=message):
+                orch = self._make_orchestrator()
+                captured = {}
+
+                def fake_execute(ctx, parse_dashboard=False, progress_callback=None):
+                    captured["ctx"] = ctx
+                    return OrchestratorResult(success=True, content="assistant reply")
+
+                with patch.object(orch, "_execute_pipeline", side_effect=fake_execute):
+                    with patch("src.agent.orchestrator.build_visible_chat_history", return_value=[]):
+                        with patch("src.agent.conversation.conversation_manager.get_or_create"):
+                            with patch("src.agent.conversation.conversation_manager.add_message"):
+                                orch.chat(message, "session-1")
+
+                ctx = captured["ctx"]
+                self.assertEqual(ctx.stock_code, "")
+                self.assertNotIn("stock_scope", ctx.meta)
 
     def test_chat_does_not_read_or_write_provider_trace(self):
         from src.agent.orchestrator import OrchestratorResult

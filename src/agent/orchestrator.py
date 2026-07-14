@@ -1473,6 +1473,8 @@ _COMMON_WORDS: set[str] = {
     "TTM", "LTM", "NTM", "FWD", "YOY", "QOQ", "YTD",
     "EBIT", "EBITDA", "DCF", "CAGR", "FCF", "NAV", "AUM",
     "PE", "PB",
+    # Macro indicators / events that are commonly discussed as topics
+    "CPI", "PPI", "PMI", "GDP", "PCE", "NFP", "FOMC",
     # Greetings / filler words that often appear in chat messages
     "HELLO", "PLEASE", "THANKS", "CHECK", "LOOK", "THINK",
     "MAYBE", "GUESS", "TELL", "SHOW", "WHAT", "WHATS",
