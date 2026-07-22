@@ -527,6 +527,23 @@ jobs:
             logs/
           retention-days: 30
       
+      - name: 推送报告到服务器
+        if: success()
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          if [ -n "$SERVER_SSH_KEY" ] && [ -d "reports" ] && [ "$(ls -A reports 2>/dev/null)" ]; then
+            mkdir -p ~/.ssh
+            echo "$SERVER_SSH_KEY" | base64 -d > ~/.ssh/id_rsa
+            chmod 600 ~/.ssh/id_rsa
+            ssh-keyscan -H 47.85.197.125 >> ~/.ssh/known_hosts 2>/dev/null
+            scp -i ~/.ssh/id_rsa -r reports/* root@47.85.197.125:/opt/stock-portfolio/data/analysis-reports/
+            rm -f ~/.ssh/id_rsa
+            echo "✅ 报告已推送到服务器"
+          else
+            echo "⚠️ 跳过推送（无 SSH_KEY 或无报告）"
+          fi
+
       - name: 显示运行结果
         if: always()
         run: |
